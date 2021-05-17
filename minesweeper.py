@@ -97,7 +97,7 @@ class Box(object):
             flags_left -= 1 
         else: 
             flags_left += 1
-    
+        
     def draw(self, x, y):
         screen.blit(self.image, (x, y))
 
@@ -114,7 +114,7 @@ for row in range(rows):
 ##--------------------------------------
 
 #displaying main grid
-def draw_grid(grid2D):
+def draw_grid():
 
     #Drawing border
     pygame.draw.rect(screen, (25, 25, 25), (grid_origin_x-border//2, grid_origin_y-border//2, length+border, height+border), border)
@@ -149,7 +149,7 @@ def display_flags_left():
     flag_font =  pygame.font.Font('Uniforme (Font).ttf', 60)
     flags_label = flag_font.render(str(flags_left) , 1, (51, 51, 181))
     screen.blit(flags_label,(80,125))
-    screen.blit( pygame.transform.scale(flag,(60,60)), (120,120))
+    screen.blit( pygame.transform.scale(flag,(60,60)), (125,120))
 
 
 def display_timer():
@@ -196,37 +196,57 @@ def right_click(x,y):
 def click(x,y):
     global lives, revealed, flags_left
     box = grid2D[y][x]
+
+    if not box.is_hidden:
+        return 
     
     if box.is_flagged:
-       box.flag()
+        box.flag()
 
     elif not box.is_mine:
         box.image = revealed_numbers[box.nearby]
         box.is_hidden = False
         revealed -=1
-        if box.is_flagged:
-            box.is_flagged = False
+        if box.nearby == 0:
+            available = find_nearby_boxes(x,y)
+            for pos in available:
+                col,row = pos
+                if grid2D[row][col].is_hidden:
+                    click(col,row)
     else:
         box.image = revealed_bomb
         box.is_hidden = False
         flags_left -=1 
         lives -= 1
 
-    if box.nearby == 0:
-        available = find_nearby_boxes(x,y)
-        for pos in available:
-            col,row = pos
-            if grid2D[row][col].is_hidden:
-               click(col,row)
+def reveal_around(x,y):
+    if grid2D[y][x].is_mine:
+        return 
 
+    available = find_nearby_boxes(x,y)
+    no_flags = []
+    flags_around = 0
+    
+    for pos in available:
+        col,row = pos
+        if  grid2D[row][col].is_flagged:
+            flags_around += 1
+
+        elif grid2D[row][col].is_hidden :
+            no_flags.append(pos)
+     
+    if grid2D[y][x].nearby == flags_around:   
+        for pos in no_flags:
+            col,row = pos
+            click(col,row)
+ 
 def find_nearby_boxes(x,y):
     surroundings = [(x+1,y),(x+1,y+1),(x+1,y-1),(x,y-1),(x,y+1),(x-1,y-1),(x-1,y),(x-1,y+1)]
     nearby = []
     for pos in surroundings:
-        x,y = pos
-        if x < 0 or x >= columns or y < 0 or y >= rows:
-            continue     
-        nearby.append(pos)
+        col , row  = pos
+        if col >= 0 and col < columns and row >= 0 and row < rows:  
+            nearby.append(pos)
     return nearby
 
 def get_nearby_mines(x,y):
@@ -239,41 +259,57 @@ def get_nearby_mines(x,y):
     
     return mines_near
 
-def reveal_around(x,y):
-    available = find_nearby_boxes(x,y)
-    flags_around = 0
-
-    for pos in available:
-        col,row = pos
-        if  grid2D[row][col].is_flagged:
-            flags_around += 1
-            available.remove(pos)
-
-   
-    if grid2D[y][x].nearby == flags_around:
-    
-        for pos in available:
-            col,row = pos
-            click(col,row)
-
- 
-
-##Calculating Zones, changing score and adjusting blocks above
+##Game over screens
 ##--------------------------------------
 
 def game_over_win():
-    
-    global timeboard, timer,  lives 
+
     overFont =  pygame.font.Font('Uniforme (Font).ttf', 60)
     finalScoreFont =  pygame.font.Font('Uniforme (Font).ttf', 40)
 
     gameOver = overFont.render("YOU WON!", 1, (215,215,215))
     finalScore = finalScoreFont.render("Time needed: " + str(timer) + "Lives left: " + str(lives), 1, (215,215,215))
+    play_again = finalScoreFont.render("Click anywhere to play again", 1, (215,215,215))
+    screen.blit(gameOver,((w_length - gameOver.get_width()) // 2, (w_height - gameOver.get_height())//2))
+    screen.blit(finalScore,((w_length - finalScore.get_width()) // 2, (w_height - finalScore.get_height())//2 - 60))
+    screen.blit(finalScore,((w_length - finalScore.get_width()) // 2, (w_height - finalScore.get_height())//2 + 70))
+    
+
+    pygame.display.update()
+   
+    choice = False
+    while not choice:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                choice = True
+
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                load_new_game()
+                    
+    pygame.quit()
+    return False
+
+def game_over_loss():
+    overFont =  pygame.font.Font('Uniforme (Font).ttf', 60)
+    finalScoreFont =  pygame.font.Font('Uniforme (Font).ttf', 40)
+    mistake_font =  pygame.font.Font('Uniforme (Font).ttf', 25)
+
+    gameOver = overFont.render("YOU LOST... Better luck next time!", 1, (215,215,215))
+    finalScore = finalScoreFont.render("Click anywhere to play again", 1, (215,215,215))
+
+
+    for i in range(len(grid2D)):
+        for j in range(len(grid2D[0])):
+            if grid2D[i][j].is_hidden and grid2D[i][j].is_mine:
+                grid2D[i][j].image == revealed_bomb
+            elif grid2D[i][j].is_hidden and grid2D[i][j].is_flagged:
+                red_x = mistake_font.render("X", 1, (163,15,15))
+                screen.blit(red_x,(grid_origin_x + j*27,grid_origin_y + i*27))
+    draw_grid()
     screen.blit(gameOver,((w_length - gameOver.get_width()) // 2, (w_height - gameOver.get_height())//2))
     screen.blit(finalScore,((w_length - finalScore.get_width()) // 2, (w_height - finalScore.get_height())//2 - 60))
 
     pygame.display.update()
-   
 
     choice = False
     while not choice:
@@ -281,21 +317,37 @@ def game_over_win():
             if event.type == pygame.QUIT:
                 choice = True
 
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    timer = 0
-                    timeboard = "000"
-                    lives = 3
-
-                    grid2D = [[-1 for x in range(columns)] for x in range(rows)]
-                    print("Starting new game")
-                    main()
-                    
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+               load_new_game()
+                                
     pygame.quit()
     return False
 
-def game_over_loss():
-    return 0
+def load_new_game():
+    global timer, lives, timeboard, revealed, flags_left, total_boxes 
+
+    timer = 0
+    timeboard = "000"
+    lives = 3
+    flags_left = mines
+    revealed = total_boxes-mines
+
+    for row in range(rows):
+        for col in range (columns):
+            grid2D[row][col] = Box(row,col)
+
+    main()
+
+def pause():
+    print("joj")
+
+def button(text, position):
+    button_font =  pygame.font.Font('Uniforme (Font).ttf', 40)
+    text_render = button_font.render(text, 1, (0, 0, 0))
+    x, y = position
+    pygame.draw.rect(screen, (200, 200, 200), (x, y, x+30 , y+50))
+    return screen.blit(text_render, (x, y))
+
 
 ##Main Function, Let's play
 ##--------------------------------------
@@ -309,6 +361,10 @@ def main():
     # initializing clock and time
     clock = pygame.time.Clock()
     time = 1
+
+    #making restart and pause button:
+    restart_button = button("Restart",(60,60))
+    pause_button = button("Pause",(110,60))
 
     while playing:
   
@@ -332,14 +388,15 @@ def main():
                                 click(x,y)
                             else:
                                 reveal_around(x,y)
-                                   
-                            if revealed == 0:
-                                game_over_win()
-                            if lives < 1:
-                                game_over_loss()                                  
+                                                              
                         else:
                             opening(x,y)
-                            opened = True               
+                            opened = True  
+
+                        if restart_button.collidepoint(x,y):
+                            load_new_game()
+                        elif pause_button.collidepoint(x,y):
+                            pause()            
                       
                     elif pygame.mouse.get_pressed()[2]:
                         right_click(x,y)
@@ -359,7 +416,16 @@ def main():
         display_lives(w_length*3//4,w_height//10)
         display_timer() 
         display_flags_left()
-        draw_grid(grid2D)
+
+        if lives < 1:
+            game_over_loss()                                  
+        if revealed < 1:
+            game_over_win()
+
+        
+        draw_grid()
+
+
           
 
         pygame.display.update()
