@@ -14,9 +14,10 @@ You are given hints from opened boxes that indicate how many landmines are adjac
 The game ends when all the numbers (none-mines) boxes are opened.  
 
 ## Game controls
-    Click:  When you click on a box, it will reveal what is under it. The first opening click is always a safe box.
+
+   Click: When you click on a box, it will reveal what is under it. The first opening click is always a safe box.
     
-    Right Click: You can right click on a box to put a flag where you believe a landmine is found.
+   Right Click: You can right click on a box to put a flag where you believe a landmine is found.
      
    If you have the good amount of flags around a certain box, you can click that revealed number to reveal all boxes around it instead of clicking all of them individually. This      will help you get a faster time and a better score!  Make sure the flagged boxes are indeed the boxes with the landmines or you will lose lives when you open a landmine.
 
